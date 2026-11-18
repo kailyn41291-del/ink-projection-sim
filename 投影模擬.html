@@ -41,6 +41,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .cue small{color:var(--soft);font-variant-numeric:tabular-nums;margin-right:3px}
 .player{display:grid;grid-template-columns:62px minmax(0,1fr);gap:12px;align-items:center;margin-top:10px}
 .player video{width:62px;aspect-ratio:9/16;background:#000;border:1px solid var(--line);border-radius:3px;display:block}
+.cuerow{display:grid;grid-template-columns:62px minmax(0,1fr) 30px;gap:8px;align-items:center;font-size:12.5px}
+.cuerow>span{color:var(--soft)}
+.cuerow select{font:inherit;font-size:12.5px;background:var(--ink);color:var(--paper);border:1px solid var(--line);border-radius:5px;padding:4px 6px;min-width:0}
+.cuerow video{width:30px;aspect-ratio:9/16;background:#000;border:1px solid var(--line);border-radius:2px;display:block}
 .pl-ctl{display:flex;flex-direction:column;gap:8px;font-size:12.5px}
 .pl-row{display:flex;gap:6px;flex-wrap:wrap}
 .btn{background:transparent;border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12.5px}
@@ -103,9 +107,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
     <section>
       <h2>播放的畫面</h2>
+      <p class="note" style="margin:-4px 0 8px">點這裡三台一起換；要各播各的，在下面每台的「播放」選。</p>
       <div class="cues" id="cues"></div>
-      <div class="player">
-        <video id="vid" muted loop playsinline preload="auto"></video>
+      <div class="player" style="grid-template-columns:minmax(0,1fr)">
         <div class="pl-ctl">
           <div class="pl-row">
             <button class="btn" id="play">暫停</button>
@@ -358,10 +362,8 @@ function compute(st){
 
 // ===== 影片與畫面 =====
 const CUES=[['01','天雨粟'],['02','雙鉤填墨'],['03','千字陣'],['04','樂在其中'],['05','辨認'],['06','跨越文字'],['07','墨河'],['08','比翼鳥'],['09','百手'],['10','集體漂流'],['11','樂結尾'],['','範圍測試']];
-const vid=document.getElementById('vid');
-const vtex=new THREE.VideoTexture(vid); vtex.colorSpace=THREE.SRGBColorSpace;
 const blackTex=new THREE.DataTexture(new Uint8Array([0,0,0,255]),1,1); blackTex.needsUpdate=true;
-const uFit={value:0}, uPattern={value:0};
+const uFit={value:0};
 
 const warpVS=`varying vec2 vUv; void main(){vUv=uv; gl_Position=vec4(position.xy,0.,1.);}`;
 // uv：這台畫面內 0–1；mask：投影面範圍；uOff/uScl：換到同一面牆所有畫面合起來的範圍
@@ -400,10 +402,13 @@ const quadGeo=new THREE.PlaneGeometry(2,2), orthoCam=new THREE.OrthographicCamer
 const COLORS=['#e2b45a','#5fb6cc','#d97a96'];
 const PJ=COLORS.map((col,i)=>{
   const rt=new THREE.WebGLRenderTarget(2048,2048);
+  const vid=document.createElement('video'); vid.muted=true; vid.loop=true; vid.playsInline=true; vid.preload='auto';
+  vid.setAttribute('playsinline',''); vid.setAttribute('aria-label',`P${i+1} 播放中的畫面`);
+  const vtex=new THREE.VideoTexture(vid); vtex.colorSpace=THREE.SRGBColorSpace;
   const mat=new THREE.ShaderMaterial({vertexShader:warpVS,fragmentShader:warpFS,uniforms:{
     tVid:{value:vtex},Hm:{value:new THREE.Matrix3()},S:{value:S},XN:{value:XN},Y0:{value:Y0},Y1:{value:Y1},
     rectAsp:{value:ASP},unionAsp:{value:ASP},vidAsp:{value:VID},mask:{value:new THREE.Vector4(0,0,1,1)},
-    uOff:{value:new THREE.Vector2()},uScl:{value:new THREE.Vector2(1,1)},fit:uFit,pattern:uPattern,ok:{value:1}}});
+    uOff:{value:new THREE.Vector2()},uScl:{value:new THREE.Vector2(1,1)},fit:uFit,pattern:{value:0},ok:{value:1}}});
   const qs=new THREE.Scene(); qs.add(new THREE.Mesh(quadGeo,mat));
   const light=new THREE.SpotLight(0xffffff,1,0,Math.atan(S),0.02,0);
   light.map=rt.texture; light.castShadow=true;
@@ -429,14 +434,14 @@ const PJ=COLORS.map((col,i)=>{
   groups.beam.add(beam,frame,rectL);
   const tag=label(`P${i+1}`,0,0,0,'pj',scene); tag.element.style.background=col;
   const size=label('',0,0,0,'',groups.beam); size.element.style.borderColor=col;
-  return {i,col,rt,mat,qs,light,body,stand,pole,arm,beam,frame,rectL,tag,size,st:null,r:null};
+  return {i,col,rt,mat,qs,light,body,stand,pole,arm,beam,frame,rectL,tag,size,vid,vtex,cue:0,vmode:'',st:null,r:null};
 });
 
 function updateAll(){
   PJ.forEach(p=>{p.r=compute(p.st);});
   // 同一面上所有開著的畫面合起來的範圍，影片照這個範圍排
   const uni={};
-  PJ.forEach(p=>{ if(!p.st.on) return; const b=p.r.box,k=p.st.surf;
+  PJ.forEach(p=>{ if(!p.st.on) return; const b=p.r.box,k=p.st.surf+'|'+p.cue;
     uni[k]=uni[k]?{x0:Math.min(uni[k].x0,b.x0),x1:Math.max(uni[k].x1,b.x1),y0:Math.min(uni[k].y0,b.y0),y1:Math.max(uni[k].y1,b.y1)}:{...b}; });
   PJ.forEach(p=>{
     const st=p.st, on=st.on, r=p.r, s=r.s, u=p.mat.uniforms;
@@ -446,7 +451,7 @@ function updateAll(){
     p.light.intensity=1+r.lux*0.005;
     u.ok.value=r.Hm?1:0; if(r.Hm) u.Hm.value.copy(r.Hm);
     u.rectAsp.value=r.W/Math.max(r.Hh,1e-3);
-    const B=r.box, U=uni[st.surf]||B;
+    const B=r.box, U=uni[st.surf+'|'+p.cue]||B;
     u.unionAsp.value=(U.x1-U.x0)/Math.max(U.y1-U.y0,1e-3);
     u.uOff.value.set((B.x0-U.x0)/(U.x1-U.x0),(B.y0-U.y0)/(U.y1-U.y0));
     u.uScl.value.set(r.W/(U.x1-U.x0),r.Hh/(U.y1-U.y0));
@@ -506,6 +511,7 @@ const markCustom=()=>[...pbox.children].forEach(b=>b.setAttribute('aria-pressed'
 
 // ===== 投影機卡片 =====
 const pjbox=document.getElementById('pjs');
+const COPT=CUES.map(([n,t],i)=>`<option value="${i}">${n?n+' ':''}${t}</option>`).join('');
 const SOPT=Object.entries(SURF).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('');
 PJ.forEach(p=>{
   const el=document.createElement('div'); el.className='pj'; el.style.setProperty('--c',p.col);
@@ -513,6 +519,7 @@ PJ.forEach(p=>{
   el.innerHTML=`
     <div class="pj-h"><span class="chip">P${p.i+1}</span><span class="m">Vivitek DX283-ST</span><label><input type="checkbox" id="${id('on')}" checked> 開</label></div>
     <div class="f"><span>投到</span><select id="${id('surf')}">${SOPT}</select></div>
+    <div class="cuerow"><span>播放</span><select id="${id('cue')}">${COPT}</select><span id="${id('vbox')}"></span></div>
     <div class="f"><span>畫面寬</span><input type="range" id="${id('wid')}" min="1.0" max="2.3" step="0.01"><output id="${id('widv')}"></output></div>
     <div class="f"><span>左右</span><input type="range" id="${id('cx')}" step="0.01"><output id="${id('cxv')}"></output></div>
     <div class="f"><span>上下</span><input type="range" id="${id('cy')}" step="0.01"><output id="${id('cyv')}"></output></div>
@@ -529,6 +536,8 @@ PJ.forEach(p=>{
   p.ui={$};
   const set=(k,v)=>{p.st[k]=v; markCustom(); updateAll();};
   $('on').onchange=e=>set('on',e.target.checked);
+  $('vbox').appendChild(p.vid);
+  $('cue').onchange=e=>{ setCue(p,+e.target.value); syncCueButtons(); updateAll(); };
   $('surf').onchange=e=>{ p.st={...withH(pj(e.target.value,0,0)),on:p.st.on}; markCustom(); updateAll(); };
   $('wid').oninput=e=>set('W',+e.target.value);
   $('cx').oninput=e=>set('cx',+e.target.value);
@@ -568,37 +577,52 @@ function renderCard(p){
 
 // ===== 播放 =====
 const cbox=document.getElementById('cues');
-let cue=0;
 CUES.forEach(([n,t],i)=>{
   const b=document.createElement('button'); b.className='cue'; b.id='cue'+i; b.setAttribute('aria-pressed','false');
-  b.innerHTML=n?`<small>${n}</small>${t}`:t; b.title=t; b.onclick=()=>setCue(i); cbox.appendChild(b);
+  b.innerHTML=n?`<small>${n}</small>${t}`:t; b.title=t; cbox.appendChild(b);
 });
 const playBtn=document.getElementById('play');
-function setCue(i){
-  cue=(i+CUES.length)%CUES.length;
-  [...cbox.children].forEach((b,j)=>b.setAttribute('aria-pressed',j===cue));
-  const n=CUES[cue][0];
-  uPattern.value=n?0:1;
-  if(n) loadCue(n,cue);
-}
+const vstat=document.getElementById('vstat');
+let texErr='';
+const showStat=()=>{
+  vstat.textContent=texErr?`影片貼不到 3D 上（${texErr}），先用範圍測試看位置。`
+    :PJ.filter(p=>p.st&&p.st.on).map(p=>`P${p.i+1}：${CUES[p.cue][0]?CUES[p.cue][1]+'，'+(p.vmode||'載入中'):'範圍測試'}`).join('　');
+};
 // 發布後頁面在沙盒裡，直接用網址播的影片會被當成跨來源，不能貼到 3D 上；先抓成 blob 再播
 const blobs={};
-const vstat=document.getElementById('vstat');
-let vmode='', texErr='';
-const showStat=()=>{vstat.textContent=texErr?`影片貼不到 3D 上（${texErr}），先用範圍測試看位置。`:`影片：${vmode}`;};
-async function loadCue(n,want){
-  try{
-    if(!blobs[n]){ const res=await fetch(`videos/cue${n}.mp4`); if(!res.ok) throw new Error('HTTP '+res.status); blobs[n]=URL.createObjectURL(await res.blob()); }
-    if(cue!==want) return;
-    vid.src=blobs[n]; vmode='已載入';
-  }catch(e){ if(cue!==want) return; vid.src=`videos/cue${n}.mp4`; vmode=`改用直接播放（${e.message||e}）`; }
+const getBlob=n=>blobs[n]||(blobs[n]=fetch(`videos/cue${n}.mp4`).then(r=>{if(!r.ok) throw new Error('HTTP '+r.status); return r.blob();}).then(b=>URL.createObjectURL(b)));
+async function setCue(p,i){
+  p.cue=(i+CUES.length)%CUES.length;
+  const n=CUES[p.cue][0], want=p.cue;
+  p.mat.uniforms.pattern.value=n?0:1;
+  if(p.ui) p.ui.$('cue').value=p.cue;
+  if(!n){ p.vid.pause(); p.vid.removeAttribute('src'); p.vid.load(); showStat(); return; }
+  p.vmode='載入中'; showStat();
+  try{ const url=await getBlob(n); if(p.cue!==want) return; p.vid.src=url; p.vmode='已載入'; }
+  catch(e){ delete blobs[n]; if(p.cue!==want) return; p.vid.src=`videos/cue${n}.mp4`; p.vmode=`改用直接播放（${e.message||e}）`; }
   showStat();
-  vid.play().catch(e=>{vmode+=`；自動播放被擋，請按播放`;showStat();}); playBtn.textContent='暫停';
+  if(playing) p.vid.play().catch(()=>{p.vmode+='；自動播放被擋，請按播放';showStat();});
 }
-vid.addEventListener('error',()=>{vmode=`影片讀不到（錯誤碼 ${vid.error&&vid.error.code}）`;showStat();});
-playBtn.onclick=()=>{ if(vid.paused){vid.play().catch(()=>{});playBtn.textContent='暫停';} else {vid.pause();playBtn.textContent='播放';} };
-document.getElementById('prev').onclick=()=>setCue(cue-1);
-document.getElementById('next').onclick=()=>setCue(cue+1);
+PJ.forEach(p=>p.vid.addEventListener('error',()=>{p.vmode=`影片讀不到（錯誤碼 ${p.vid.error&&p.vid.error.code}）`;showStat();}));
+let playing=true;
+function syncCueButtons(){
+  const same=PJ.every(p=>p.cue===PJ[0].cue);
+  [...cbox.children].forEach((b,j)=>b.setAttribute('aria-pressed',same&&j===PJ[0].cue));
+}
+async function setAll(i){
+  await Promise.all(PJ.map(p=>setCue(p,i)));
+  // 三台播同一段時從頭一起播
+  PJ.forEach(p=>{ if(p.vid.src) p.vid.currentTime=0; });
+  syncCueButtons(); updateAll();
+}
+CUES.forEach((c,i)=>{ cbox.children[i].onclick=()=>setAll(i); });
+playBtn.onclick=()=>{
+  playing=!playing;
+  PJ.forEach(p=>{ if(!p.vid.src) return; playing?p.vid.play().catch(()=>{}):p.vid.pause(); });
+  playBtn.textContent=playing?'暫停':'播放';
+};
+document.getElementById('prev').onclick=()=>setAll(PJ[0].cue-1);
+document.getElementById('next').onclick=()=>setAll(PJ[0].cue+1);
 document.getElementById('fit').onclick=e=>{
   const b=e.target.closest('button'); if(!b) return;
   uFit.value=+b.dataset.v; [...e.currentTarget.children].forEach(x=>x.setAttribute('aria-pressed',x===b));
@@ -644,7 +668,7 @@ function resize(){
 }
 new ResizeObserver(resize).observe(stage); resize();
 
-applyPreset(0); setCue(0);
+applyPreset(0); setAll(0);
 
 const tmp=new THREE.Vector3();
 renderer.setAnimationLoop(now=>{
