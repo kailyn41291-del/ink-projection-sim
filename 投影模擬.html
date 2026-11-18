@@ -27,7 +27,8 @@ h2{font-size:13px;font-weight:700;margin:0 0 8px;letter-spacing:.04em}
 button{font:inherit;color:var(--paper);cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .presets{display:flex;flex-direction:column;gap:6px}
-.preset{display:grid;grid-template-columns:22px minmax(0,1fr);gap:2px 8px;text-align:left;background:transparent;border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+.pgroup{font-size:11.5px;color:var(--soft);letter-spacing:.06em;margin:6px 0 0}
+.preset{display:grid;grid-template-columns:30px minmax(0,1fr);gap:2px 8px;text-align:left;background:transparent;border:1px solid var(--line);border-radius:7px;padding:8px 10px}
 .preset:hover{border-color:var(--soft)}
 .preset[aria-pressed="true"]{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 8%,transparent)}
 .preset .k{grid-row:span 2;font-size:12px;color:var(--soft);font-variant-numeric:tabular-nums;padding-top:1px}
@@ -101,7 +102,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     </div>
 
     <section>
-      <h2>擺法</h2>
+      <h2>擺法（三台全部用上的 21 種組合）</h2>
+      <p class="note" style="margin:-4px 0 8px">按鍵盤 ← → 可以一個一個換。走廊天花板要在走道上架高機器，會擋動線，不列入。</p>
       <div class="presets" id="presets"></div>
     </section>
 
@@ -144,7 +146,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       <label><input type="checkbox" id="tLbl" checked> 標籤</label>
     </section>
 
-    <p class="note">DX283-ST：XGA 1024×768（4:3）、3600 流明、投射比 0.63、偏移 106%、50–100 吋、只有垂直梯形校正 ±40°、燈泡機。投射比 0.63 的意思是：離牆 1.28 m，畫面寬 2.03 m（100 吋），這是它的上限，所以一台打不滿一整面牆。說明書提醒：機器要水平擺放，朝上或朝下使用燈泡壽命不保證；沒有左右梯形校正，機器要正對畫面。亮度是 3600 流明平均到整個畫面的粗估，實際會再暗一些。上下傾斜時模擬裡已用梯形校正拉正。<br>規格來源：<a href="https://www.vivitek.com.tw/product_details/7Cab74A7a6EF" target="_blank" rel="noopener">Vivitek 台灣產品頁</a>、原廠規格表與使用手冊（XGA-ST 投射距離表）。家具高度為估計。</p>
+    <p class="note">DX283-ST：XGA 1024×768（4:3）、3600 流明、投射比 0.63、偏移 106%、50–100 吋、只有垂直梯形校正 ±40°、燈泡機。投射比 0.63 的意思是：離牆 1.28 m，畫面寬 2.03 m（100 吋），這是它的上限，所以一台打不滿一整面牆。說明書提醒：機器要水平擺放，朝上或朝下使用燈泡壽命不保證；沒有左右梯形校正，機器要正對畫面。亮度是 3600 流明平均到整個畫面的粗估，實際會再暗一些。上下傾斜時模擬裡已用梯形校正拉正。兩台以上打同一面牆、播同一段時，畫面重疊約 25 cm 做融接（重疊區兩台各自漸暗，合起來亮度一樣，看不出接縫）；DX283-ST 本身沒有融接功能，現場要由播放電腦（例如 TouchDesigner）做。<br>規格來源：<a href="https://www.vivitek.com.tw/product_details/7Cab74A7a6EF" target="_blank" rel="noopener">Vivitek 台灣產品頁</a>、原廠規格表與使用手冊（XGA-ST 投射距離表）。家具高度為估計。</p>
   </aside>
 </div>
 
@@ -165,7 +167,7 @@ const stage=document.getElementById('stage');
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
-renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFShadowMap;
 stage.appendChild(renderer.domElement);
 const lr=new CSS2DRenderer();
 lr.domElement.style.cssText='position:absolute;inset:0;pointer-events:none';
@@ -263,7 +265,6 @@ const SURF={
   A:{name:'A 牆',c:V(0,H/2,f(11)),n:V(1,0,0),ra:V(0,0,-1),ua:V(0,1,0),W:f(22),Hs:H,vert:true,dl:'離 A 牆'},
   B:{name:'B 牆',c:V(f(25),H/2,f(11)),n:V(-1,0,0),ra:V(0,0,1),ua:V(0,1,0),W:f(22),Hs:H,vert:true,dl:'離 B 牆'},
   P:{name:'梁柱',c:V(f(18.5),H/2,f(1.8)),n:V(0,0,1),ra:V(1,0,0),ua:V(0,1,0),W:f(3.2),Hs:H,vert:true,dl:'離梁柱'},
-  C:{name:'走廊天花板',c:V(f(14.6),H,f(29.5)),n:V(0,-1,0),ra:V(0,0,-1),ua:V(1,0,0),W:f(13),Hs:f(5),vert:false},
   F:{name:'畫框區',c:V(f(21.1),1.65,f(22)),n:V(0,0,-1),ra:V(-1,0,0),ua:V(0,1,0),W:f(7.2),Hs:1.5,vert:true,dl:'離畫框牆'}
 };
 Object.values(SURF).forEach(s=>{
@@ -371,7 +372,13 @@ const warpFS=`
 precision highp float;
 uniform sampler2D tVid; uniform mat3 Hm; uniform float S,XN,Y0,Y1,rectAsp,unionAsp,vidAsp;
 uniform vec4 mask; uniform vec2 uOff,uScl; uniform int fit,pattern,ok;
+uniform vec4 selfR,o1,o2; uniform int nO; uniform float feather; uniform vec3 nCam;
 varying vec2 vUv;
+float edgeW(vec2 q,vec4 r){
+  if(q.x<r.x||q.x>r.z||q.y<r.y||q.y>r.w) return 0.;
+  float d=min(min(q.x-r.x,r.z-q.x),min(q.y-r.y,r.w-q.y));
+  return smoothstep(0.,1.,d/feather);
+}
 vec3 contain(vec2 t,float a){
   if(a>vidAsp) t.x=(t.x-.5)*a/vidAsp+.5; else t.y=(t.y-.5)*vidAsp/a+.5;
   return (t.x<0.||t.x>1.||t.y<0.||t.y>1.)?vec3(0.):texture2D(tVid,t).rgb;
@@ -384,8 +391,9 @@ void main(){
   if(uv.x<mask.x||uv.x>mask.z||uv.y<mask.y||uv.y>mask.w){gl_FragColor=vec4(vec3(.015),1.);return;}
   vec3 col;
   if(pattern==1){
-    vec2 g=fract(uv*vec2(rectAsp*4.,4.)); float l=step(.95,max(g.x,g.y));
-    float e=step(min(min(uv.x,1.-uv.x),min(uv.y,1.-uv.y)),.012);
+    vec2 Ug=uOff+uv*uScl;
+    vec2 g=fract(Ug*vec2(unionAsp*4.,4.)); float l=step(.95,max(g.x,g.y));
+    float e=step(min(min(Ug.x,1.-Ug.x),min(Ug.y,1.-Ug.y)),.006);
     col=mix(vec3(.45),vec3(1.),max(l,e));
   }else if(fit==2){
     col=contain(uv,rectAsp);
@@ -394,6 +402,13 @@ void main(){
     if(fit==0) col=contain(U,unionAsp);
     else{ vec2 t=U; if(unionAsp>vidAsp) t.y=.5+(U.y-.5)*vidAsp/unionAsp; else t.x=.5+(U.x-.5)*unionAsp/vidAsp; col=texture2D(tVid,t).rgb; }
   }
+  float c0=max(dot(normalize(vec3(0.,(Y0+Y1)*.5,1.)),nCam),.05), c=max(dot(normalize(vec3(p,1.)),nCam),.05);
+  col*=c0/c;
+  if(nO>0){
+    vec2 qs=mix(selfR.xy,selfR.zw,uv);
+    float ws=edgeW(qs,selfR), sum=ws+edgeW(qs,o1)+(nO>1?edgeW(qs,o2):0.);
+    col*=(ws+1e-5)/(sum+1e-5);
+  }
   gl_FragColor=vec4(col,1.);
 }`;
 const quadGeo=new THREE.PlaneGeometry(2,2), orthoCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
@@ -401,14 +416,15 @@ const quadGeo=new THREE.PlaneGeometry(2,2), orthoCam=new THREE.OrthographicCamer
 // ===== 三台投影機 =====
 const COLORS=['#e2b45a','#5fb6cc','#d97a96'];
 const PJ=COLORS.map((col,i)=>{
-  const rt=new THREE.WebGLRenderTarget(2048,2048);
+  const rt=new THREE.WebGLRenderTarget(2048,2048,{type:THREE.HalfFloatType});
   const vid=document.createElement('video'); vid.muted=true; vid.loop=true; vid.playsInline=true; vid.preload='auto';
   vid.setAttribute('playsinline',''); vid.setAttribute('aria-label',`P${i+1} 播放中的畫面`);
   const vtex=new THREE.VideoTexture(vid); vtex.colorSpace=THREE.SRGBColorSpace;
   const mat=new THREE.ShaderMaterial({vertexShader:warpVS,fragmentShader:warpFS,uniforms:{
     tVid:{value:vtex},Hm:{value:new THREE.Matrix3()},S:{value:S},XN:{value:XN},Y0:{value:Y0},Y1:{value:Y1},
     rectAsp:{value:ASP},unionAsp:{value:ASP},vidAsp:{value:VID},mask:{value:new THREE.Vector4(0,0,1,1)},
-    uOff:{value:new THREE.Vector2()},uScl:{value:new THREE.Vector2(1,1)},fit:uFit,pattern:{value:0},ok:{value:1}}});
+    uOff:{value:new THREE.Vector2()},uScl:{value:new THREE.Vector2(1,1)},fit:uFit,pattern:{value:0},ok:{value:1},
+    selfR:{value:new THREE.Vector4()},o1:{value:new THREE.Vector4()},o2:{value:new THREE.Vector4()},nO:{value:0},feather:{value:0.2},nCam:{value:new THREE.Vector3(0,0,1)}}});
   const qs=new THREE.Scene(); qs.add(new THREE.Mesh(quadGeo,mat));
   const light=new THREE.SpotLight(0xffffff,1,0,Math.atan(S),0.02,0);
   light.map=rt.texture; light.castShadow=true;
@@ -456,6 +472,15 @@ function updateAll(){
     u.uOff.value.set((B.x0-U.x0)/(U.x1-U.x0),(B.y0-U.y0)/(U.y1-U.y0));
     u.uScl.value.set(r.W/(U.x1-U.x0),r.Hh/(U.y1-U.y0));
     u.mask.value.set((-s.W/2-B.x0)/r.W,(-s.Hs/2-B.y0)/r.Hh,(s.W/2-B.x0)/r.W,(s.Hs/2-B.y0)/r.Hh);
+    // 融接：同一面、播同一段、畫面有重疊的
+    const mates=PJ.filter(q=>q!==p&&q.st.on&&q.st.surf===st.surf&&q.cue===p.cue).map(q=>q.r.box)
+      .filter(o=>Math.min(B.x1,o.x1)-Math.max(B.x0,o.x0)>0.005&&Math.min(B.y1,o.y1)-Math.max(B.y0,o.y0)>0.005);
+    u.selfR.value.set(B.x0,B.y0,B.x1,B.y1);
+    const nn=s.n.clone().negate(); u.nCam.value.set(nn.dot(r.b.rt),nn.dot(r.b.up),nn.dot(r.b.fw));
+    u.nO.value=mates.length;
+    [u.o1,u.o2].forEach((o,j)=>{const m=mates[j]; if(m) o.value.set(m.x0,m.y0,m.x1,m.y1);});
+    p.blend=mates.length?Math.max(...mates.map(o=>Math.min(Math.min(B.x1,o.x1)-Math.max(B.x0,o.x0),Math.min(B.y1,o.y1)-Math.max(B.y0,o.y0)))):0;
+    u.feather.value=Math.max(p.blend,0.01);
     // 機身：x=右、y=上、-z=鏡頭方向
     p.body.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(r.b.rt,r.b.up,r.b.fw.clone().negate()));
     p.body.position.copy(r.O).addScaledVector(r.b.up,-0.02).addScaledVector(r.b.rt,-0.07).addScaledVector(r.b.fw,0.12);
@@ -485,29 +510,51 @@ function updateAll(){
 
 // ===== 擺法 =====
 // cx、cy：畫面中心離投影面中心幾公尺（右、上為正）；W：畫面寬；h：鏡頭高度（auto＝正對時的理想高度）
-const W100=2.03;
+const W100=2.03, OV=0.25, SY=(W100*0.75-OV)/2, SX=W100-OV;
 const pj=(surf,cx,cy,W=W100,h='auto')=>({surf,cx,cy,W,h});
-const PRESETS=[
-  {t:'A 牆上下兩台＋梁柱',d:'A 牆兩台疊成一幅 2.0 × 3.0 m 的直幅，剛好放卷軸；梁柱 1 台',p:[pj('A',0,-0.76),pj('A',0,0.76),pj('P',0,0)]},
-  {t:'A、B 牆各一台＋梁柱',d:'每面牆中間一幅 2.0 × 1.5 m（100 吋）',p:[pj('A',0,0),pj('B',0,0),pj('P',0,0)]},
-  {t:'A、B 牆各一台＋畫框',d:'畫框那台放發光桌靠牆端',p:[pj('A',0,0),pj('B',0,0),pj('F',0,0,2.0)]},
-  {t:'A 牆三台並排',d:'三幅接成 6.1 × 1.5 m 的長條，B 牆不投',p:[pj('A',-2.03,0),pj('A',0,0),pj('A',2.03,0)]},
-  {t:'梁柱上下兩台＋畫框',d:'梁柱打到 3.0 m 高；大牆不投',p:[pj('P',0,-0.76),pj('P',0,0.76),pj('F',0,0,2.0)]},
-  {t:'梁柱＋走廊天花板＋畫框',d:'天花板那台放走廊高架上朝上打',p:[pj('P',0,0),pj('C',0,0),pj('F',0,0,2.0)]}
-];
+// 每一面能放的排法（台數、名稱、畫面大小、各台位置）
+const LAYOUT={
+  A:[{n:1,t:'A 牆 1 台',sz:'2.0 × 1.5 m',p:[pj('A',0,0)]},
+     {n:2,t:'A 牆上下 2 台',sz:'2.0 × 2.8 m 直幅',p:[pj('A',0,-SY),pj('A',0,SY)]},
+     {n:2,t:'A 牆左右 2 台',sz:'3.8 × 1.5 m',p:[pj('A',-SX/2,0),pj('A',SX/2,0)]},
+     {n:3,t:'A 牆 3 台並排',sz:'5.6 × 1.5 m 長條',p:[pj('A',-SX,0),pj('A',0,0),pj('A',SX,0)]}],
+  B:[{n:1,t:'B 牆 1 台',sz:'2.0 × 1.5 m',p:[pj('B',0,0)]},
+     {n:2,t:'B 牆上下 2 台',sz:'2.0 × 2.8 m 直幅',p:[pj('B',0,-SY),pj('B',0,SY)]},
+     {n:2,t:'B 牆左右 2 台',sz:'3.8 × 1.5 m',p:[pj('B',-SX/2,0),pj('B',SX/2,0)]},
+     {n:3,t:'B 牆 3 台並排',sz:'5.6 × 1.5 m 長條',p:[pj('B',-SX,0),pj('B',0,0),pj('B',SX,0)]}],
+  P:[{n:1,t:'梁柱 1 台',sz:'1.5 m 高',p:[pj('P',0,0)]},
+     {n:2,t:'梁柱上下 2 台',sz:'2.8 m 高',p:[pj('P',0,-SY),pj('P',0,SY)]}],
+  F:[{n:1,t:'畫框 1 台',sz:'2.0 × 1.5 m',p:[pj('F',0,0,2.0)]}]
+};
+// 三台全部用上的所有組合：一面放 3 台／一面 2 台＋另一面 1 台／三面各 1 台
+const PRESETS=[];
+const KEYS=['A','B','P','F'];
+const pushCombo=(ls,g)=>PRESETS.push({g,t:ls.map(l=>l.t).join('＋'),d:ls.map(l=>`${l.t.replace(/ \d 台$/,'')} ${l.sz}`).join('、'),p:ls.flatMap(l=>l.p)});
+KEYS.forEach(k=>LAYOUT[k].filter(l=>l.n===3).forEach(l=>pushCombo([l],'一面放 3 台')));
+KEYS.forEach(k=>LAYOUT[k].filter(l=>l.n===2).forEach(l=>KEYS.filter(j=>j!==k).forEach(j=>pushCombo([l,LAYOUT[j][0]],'一面 2 台＋另一面 1 台'))));
+for(let a=0;a<4;a++) for(let b=a+1;b<4;b++) for(let c=b+1;c<4;c++) pushCombo([LAYOUT[KEYS[a]][0],LAYOUT[KEYS[b]][0],LAYOUT[KEYS[c]][0]],'三面各 1 台');
 const pbox=document.getElementById('presets');
+let lastG='';
 PRESETS.forEach((pr,i)=>{
+  if(pr.g!==lastG){ lastG=pr.g; const h=document.createElement('div'); h.className='pgroup'; h.textContent=pr.g; pbox.appendChild(h); }
   const b=document.createElement('button'); b.className='preset'; b.id='preset'+i; b.setAttribute('aria-pressed','false');
-  b.innerHTML=`<span class="k">${i+1}</span><span class="t">${pr.t}</span><span class="d">${pr.d}</span>`;
+  b.innerHTML=`<span class="k">C${String(i+1).padStart(2,'0')}</span><span class="t">${pr.t}</span><span class="d">${pr.d}</span>`;
   b.onclick=()=>applyPreset(i); pbox.appendChild(b);
 });
 const withH=st=>({...st,h:st.h==='auto'?idealH(st):st.h});
+let curPreset=0;
 function applyPreset(i){
-  [...pbox.children].forEach((b,j)=>b.setAttribute('aria-pressed',i===j));
-  PRESETS[i].p.forEach((st,j)=>{PJ[j].st={...withH(st),on:true};});
+  curPreset=(i+PRESETS.length)%PRESETS.length;
+  pbox.querySelectorAll('.preset').forEach((b,j)=>b.setAttribute('aria-pressed',curPreset===j));
+  PRESETS[curPreset].p.forEach((st,j)=>{PJ[j].st={...withH(st),on:true};});
   updateAll();
 }
-const markCustom=()=>[...pbox.children].forEach(b=>b.setAttribute('aria-pressed','false'));
+const markCustom=()=>pbox.querySelectorAll('.preset').forEach(b=>b.setAttribute('aria-pressed','false'));
+// 開會時用鍵盤 ← → 換擺法
+addEventListener('keydown',e=>{
+  if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ e.preventDefault(); applyPreset(curPreset+(e.key==='ArrowRight'?1:-1)); document.getElementById('preset'+curPreset).scrollIntoView({block:'nearest'}); }
+});
 
 // ===== 投影機卡片 =====
 const pjbox=document.getElementById('pjs');
@@ -560,7 +607,7 @@ function renderCard(p){
   $('rp').textContent=s.vert?`${s.dl} ${m2(r.D0)}，${stand}`:`走廊架高，鏡頭 ${r.O.y.toFixed(2)} m，朝上打`;
   const tv=Math.round(r.tiltV), th=Math.round(r.tiltH);
   $('rt').textContent=(tv===0&&th===0)?'正對，不用梯形校正':`上下 ${tv}°${th?`、左右 ${th}°`:''}（垂直梯形校正可拉 ±40°）`;
-  $('rl').textContent=`約 ${Math.round(r.lux/10)*10} lux（離越遠越暗）`;
+  $('rl').textContent=`約 ${Math.round(r.lux/10)*10} lux（離越遠越暗）${p.blend>0.005?`；和旁邊那台融接 ${Math.round(p.blend*100)} cm，重疊區亮度已平均`:''}`;
   const w=[];
   if(st.W>WMAX+0.005) w.push('超過原廠最大 100 吋（寬 2.03 m）。');
   if(st.W<WMIN-0.005) w.push('小於原廠最小 50 吋。');
@@ -636,8 +683,7 @@ const VIEWS={
   '看 A 牆':[[f(22),2.5,f(11)],[0,1.7,f(11)]],
   '看 B 牆':[[f(3),2.5,f(11)],[f(25),1.7,f(11)]],
   '看梁柱':[[f(14),1.8,f(15)],[f(18.5),1.9,f(1.8)]],
-  '走廊天花板':[[f(14.6),0.4,f(34.5)],[f(14.6),H,f(29.2)]],
-  '畫框區':[[f(17),1.7,f(8)],[f(21.1),1.6,f(22)]]
+    '畫框區':[[f(17),1.7,f(8)],[f(21.1),1.6,f(22)]]
 };
 const vbox=document.getElementById('views');
 let tween=null; const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
