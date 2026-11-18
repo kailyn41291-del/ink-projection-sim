@@ -1,0 +1,660 @@
+<meta charset="utf-8">
+<title>INK 12月投影模擬</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap">
+<style>
+/* 版面：左邊 3D 全幅，右邊操作欄；手機上操作欄移到下面。投影模擬要暗場，固定深色 */
+:root{
+  --ink:#0d0d0f; --panel:#151519; --card:#1b1b20; --line:#2a2a31; --paper:#ede6d6; --soft:#9c968a;
+  --gold:#d6ad5c; --focus:#f0c66e; --warn:#e8875f;
+  --p1:#e2b45a; --p2:#5fb6cc; --p3:#d97a96;
+  --f-display:"Noto Serif TC","Songti TC",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--ink);color:var(--paper);font-family:var(--f-body);overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+#stage{position:relative;min-width:0;overflow:hidden}
+#stage canvas{display:block}
+.side{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column;gap:22px;
+  padding-block:20px 28px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px))}
+.eyebrow{font-size:11px;letter-spacing:.14em;color:var(--soft)}
+h1{font-family:var(--f-display);font-weight:600;font-size:22px;line-height:1.3;margin:4px 0 0;text-wrap:balance}
+.sub{font-size:12.5px;color:var(--soft);margin:6px 0 0;line-height:1.6}
+h2{font-size:13px;font-weight:700;margin:0 0 8px;letter-spacing:.04em}
+button{font:inherit;color:var(--paper);cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.presets{display:flex;flex-direction:column;gap:6px}
+.preset{display:grid;grid-template-columns:22px minmax(0,1fr);gap:2px 8px;text-align:left;background:transparent;border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+.preset:hover{border-color:var(--soft)}
+.preset[aria-pressed="true"]{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 8%,transparent)}
+.preset .k{grid-row:span 2;font-size:12px;color:var(--soft);font-variant-numeric:tabular-nums;padding-top:1px}
+.preset[aria-pressed="true"] .k{color:var(--gold)}
+.preset .t{font-size:13.5px;font-weight:500}
+.preset .d{font-size:11.5px;color:var(--soft);line-height:1.5}
+.cues{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.cue{background:transparent;border:1px solid var(--line);border-radius:6px;padding:6px 4px;font-size:12px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cue:hover{border-color:var(--soft)}
+.cue[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+.cue small{color:var(--soft);font-variant-numeric:tabular-nums;margin-right:3px}
+.player{display:grid;grid-template-columns:62px minmax(0,1fr);gap:12px;align-items:center;margin-top:10px}
+.player video{width:62px;aspect-ratio:9/16;background:#000;border:1px solid var(--line);border-radius:3px;display:block}
+.pl-ctl{display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+.pl-row{display:flex;gap:6px;flex-wrap:wrap}
+.btn{background:transparent;border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12.5px}
+.btn:hover{border-color:var(--soft)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{background:transparent;border:0;padding:5px 9px;font-size:12px;color:var(--soft)}
+.seg button[aria-pressed="true"]{background:var(--line);color:var(--paper)}
+.pj{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;border-top:3px solid var(--c)}
+.pj-h{display:flex;align-items:center;gap:8px;font-size:13px}
+.chip{background:var(--c);color:#111;font-weight:700;font-size:11.5px;border-radius:4px;padding:1px 7px}
+.pj-h .m{color:var(--soft);font-size:12px}
+.pj-h label{margin-left:auto;display:flex;gap:5px;align-items:center;font-size:12px;color:var(--soft);cursor:pointer}
+.pj input[type=checkbox]{accent-color:var(--c)}
+.f{display:grid;grid-template-columns:62px minmax(0,1fr) 54px;gap:8px;align-items:center;font-size:12.5px}
+.f>span:first-child{color:var(--soft)}
+.f select{grid-column:span 2;font:inherit;font-size:12.5px;background:var(--ink);color:var(--paper);border:1px solid var(--line);border-radius:5px;padding:4px 6px;min-width:0}
+.f input[type=range]{accent-color:var(--c);min-width:0}
+.f output{font-variant-numeric:tabular-nums;text-align:right;font-size:12px}
+.read{display:grid;grid-template-columns:62px minmax(0,1fr);gap:3px 8px;margin:2px 0 0;font-size:12px;line-height:1.55;border-top:1px dashed var(--line);padding-top:8px}
+.read dt{color:var(--soft)} .read dd{margin:0;font-variant-numeric:tabular-nums;min-width:0}
+.warn{margin:0;font-size:12px;color:var(--warn);line-height:1.55}
+.warn:empty{display:none}
+.views{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.views button{background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 6px;font-size:12.5px}
+.views button:hover{border-color:var(--soft)}
+.views button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+.toggles{display:flex;flex-direction:column;gap:8px;font-size:13px}
+.toggles label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.toggles input{accent-color:var(--gold)}
+.toggles .rng{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center}
+.note{font-size:12px;line-height:1.75;color:var(--soft);margin:0}
+.note a{color:var(--soft)}
+.hint{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:12px;font-size:12px;color:var(--soft);background:color-mix(in srgb,var(--ink) 75%,transparent);padding:5px 10px;border-radius:6px;pointer-events:none}
+.lbl{font-family:var(--f-body);font-size:12px;color:var(--paper);background:rgba(13,13,15,.78);border:1px solid rgba(243,234,210,.35);border-radius:4px;padding:2px 7px;white-space:nowrap;pointer-events:none;line-height:1.45}
+.lbl small{display:block;color:var(--soft);font-size:10.5px}
+.lbl.zone{border-color:rgba(214,173,92,.6);color:var(--gold)}
+.lbl.f{font-size:11px;border-color:transparent;background:rgba(13,13,15,.55);color:var(--soft)}
+.lbl.pj{font-weight:700;color:#111;border:0}
+@media (max-width:760px){
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;grid-template-rows:60vh auto;height:auto}
+  .side{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <div id="stage"><div class="hint">拖曳旋轉 · 滾輪縮放 · 右鍵平移</div></div>
+  <aside class="side">
+    <div>
+      <div class="eyebrow">INK · 12 月 HOME PARTY</div>
+      <h1>三台投影機擺法模擬</h1>
+      <p class="sub">Vivitek DX283-ST ×3。畫面大小照原廠投射比算，機器只放地上、桌上或落地架。一台最大 100 吋（2.03 × 1.52 m）。</p>
+    </div>
+
+    <section>
+      <h2>擺法</h2>
+      <div class="presets" id="presets"></div>
+    </section>
+
+    <section>
+      <h2>播放的畫面</h2>
+      <div class="cues" id="cues"></div>
+      <div class="player">
+        <video id="vid" muted loop playsinline preload="auto"></video>
+        <div class="pl-ctl">
+          <div class="pl-row">
+            <button class="btn" id="play">暫停</button>
+            <button class="btn" id="prev">上一段</button>
+            <button class="btn" id="next">下一段</button>
+          </div>
+          <div class="pl-row" style="align-items:center;gap:8px">
+            <span style="color:var(--soft)">卷軸放進畫面</span>
+            <div class="seg" id="fit"><button aria-pressed="true" data-v="0">完整不裁</button><button aria-pressed="false" data-v="1">裁切填滿</button><button aria-pressed="false" data-v="2">每台各一份</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:10px">
+      <h2 style="margin:0">三台投影機</h2>
+      <div id="pjs" style="display:flex;flex-direction:column;gap:10px"></div>
+    </section>
+
+    <section>
+      <h2>視角</h2>
+      <div class="views" id="views"></div>
+    </section>
+
+    <section class="toggles">
+      <h2>顯示</h2>
+      <div class="rng"><span>場地燈光</span><input type="range" id="amb" min="0" max="1" step="0.01" value="0.1"></div>
+      <label><input type="checkbox" id="tBeam" checked> 投射範圍線</label>
+      <label><input type="checkbox" id="tPeople" checked> 觀眾（看會不會擋到）</label>
+      <label><input type="checkbox" id="tFurn" checked> 家具</label>
+      <label><input type="checkbox" id="tLbl" checked> 標籤</label>
+    </section>
+
+    <p class="note">DX283-ST：XGA 1024×768（4:3）、3600 流明、投射比 0.63、偏移 106%、50–100 吋、只有垂直梯形校正 ±40°、燈泡機。投射比 0.63 的意思是：離牆 1.28 m，畫面寬 2.03 m（100 吋），這是它的上限，所以一台打不滿一整面牆。說明書提醒：機器要水平擺放，朝上或朝下使用燈泡壽命不保證；沒有左右梯形校正，機器要正對畫面。亮度是 3600 流明平均到整個畫面的粗估，實際會再暗一些。上下傾斜時模擬裡已用梯形校正拉正。<br>規格來源：<a href="https://www.vivitek.com.tw/product_details/7Cab74A7a6EF" target="_blank" rel="noopener">Vivitek 台灣產品頁</a>、原廠規格表與使用手冊（XGA-ST 投射距離表）。家具高度為估計。</p>
+  </aside>
+</div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {CSS2DRenderer,CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
+
+// 單位：公尺。平面圖座標（呎）x 向右、y 向下 → three 的 x、z
+const FT=0.3048, H=12*FT, f=v=>v*FT, V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+const lr=new CSS2DRenderer();
+lr.domElement.style.cssText='position:absolute;inset:0;pointer-events:none';
+stage.appendChild(lr.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0b0b0d);
+const camera=new THREE.PerspectiveCamera(50,1,0.05,200);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.maxPolarAngle=Math.PI-0.05;
+
+const hemi=new THREE.HemisphereLight(0xfff4e0,0x1a1712,1); scene.add(hemi);
+const key=new THREE.DirectionalLight(0xffffff,1); key.position.set(4,9,3); scene.add(key);
+const amb=new THREE.AmbientLight(0xffffff,1); scene.add(amb);
+function setAmbient(k){hemi.intensity=0.2+1.6*k; key.intensity=0.1+1.2*k; amb.intensity=0.08+0.6*k;}
+
+const M=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:.9,metalness:0,...o});
+const mFloor=M(0x2b2926), mWall=M(0xb4b0a6), mFurn=M(0x4a463f);
+const groups={furn:new THREE.Group(),lbl:new THREE.Group(),people:new THREE.Group(),beam:new THREE.Group()};
+Object.values(groups).forEach(g=>scene.add(g));
+
+function box(x0,z0,x1,z1,y0,y1,mat,parent=scene,shadow=true){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(f(x1-x0),y1-y0,f(z1-z0)),mat);
+  m.position.set(f(x0+x1)/2,(y0+y1)/2,f(z0+z1)/2);
+  m.castShadow=shadow; m.receiveShadow=true;
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),new THREE.LineBasicMaterial({color:0x6b665c,transparent:true,opacity:.35}));
+  m.add(e); parent.add(m); return m;
+}
+function label(html,x,y,z,cls='',parent=groups.lbl){
+  const d=document.createElement('div'); d.className='lbl '+cls; d.innerHTML=html;
+  const o=new CSS2DObject(d); o.position.set(x,y,z); parent.add(o); return o;
+}
+
+// 地板
+box(0,0,25,22,-0.05,0,mFloor,scene,false); box(12.1,22,17.1,38,-0.05,0,mFloor,scene,false);
+
+// 牆：記住朝內方向，鏡頭在牆外時自動隱藏
+const walls=[];
+function wall(x0,z0,x1,z1,nx,nz){
+  const t=0.08, horiz=z0===z1;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(horiz?f(x1-x0):t,H,horiz?t:f(z1-z0)),mWall);
+  m.position.set(f(x0+x1)/2+(horiz?0:-nx*t/2),H/2,f(z0+z1)/2+(horiz?-nz*t/2:0));
+  m.receiveShadow=true;
+  scene.add(m); walls.push({m,p:V(f(x0+x1)/2,H/2,f(z0+z1)/2),n:V(nx,0,nz),kids:[]}); return walls.at(-1);
+}
+const wN=wall(0,0,25,0,0,1), wA=wall(0,0,0,22,1,0), wB=wall(25,0,25,22,-1,0);
+wall(0,22,12.1,22,0,-1); const wS2=wall(17.1,22,25,22,0,-1);
+wall(12.1,22,12.1,38,1,0); wall(17.1,22,17.1,38,-1,0); wall(12.1,38,17.1,38,0,-1);
+
+// 窗（北牆）
+[[3.1,7.1],[8.6,11.6],[13.7,16.4],[20.6,24.3]].forEach(([a,b])=>{
+  const w=new THREE.Mesh(new THREE.PlaneGeometry(f(b-a),1.5),new THREE.MeshStandardMaterial({color:0x1d3550,roughness:.3,emissive:0x0b1a2a}));
+  w.position.set(f(a+b)/2,1.65,0.01); scene.add(w); wN.kids.push(w);
+});
+label('窗（不投影）',f(9.8),2.6,0.05,'f');
+
+// 梁柱
+box(16.9,0,20.1,1.8,0,H,M(0xb8b4aa));
+
+// 家具（照 3D 模型俯視圖，高度為估計）
+const FURN=[[2.1,0.2,5.6,2.1,0.9,'櫃子'],[11.7,0.2,15.3,2.2,0.9,'櫃子'],[0.2,4.6,2.4,10.8,0.9,'櫃子'],[0.2,11.1,3.6,15.2,0.8,'沙發'],
+ [0.2,14.1,1.8,21.8,0.8,'沙發'],[0.2,19.4,11.9,21.8,0.8,'沙發'],[2.5,14.8,10.2,17.7,0.45,'茶几'],[5.3,8.1,8.5,11.5,0.75,'小桌'],
+ [9.5,3.5,13.3,13,0.76,'長桌'],[6.9,3.7,9.5,6.8,0.75,'小桌'],[21.4,0.5,24.8,10,1.0,'箱櫃'],[18.2,10.3,23.5,19.4,0.75,'發光桌'],[12.9,33.2,16.4,36.4,0.9,'走廊的櫃子']];
+FURN.forEach(([a,b,c,d,h])=>box(a,b,c,d,0,h,mFurn,groups.furn));
+const hitFurn=p=>FURN.find(([a,b,c,d,h])=>p.x>f(a)-0.12&&p.x<f(c)+0.12&&p.z>f(b)-0.12&&p.z<f(d)+0.12&&p.y<h+0.08);
+const lit=new THREE.Mesh(new THREE.BoxGeometry(f(1.6),0.04,f(5.5)),new THREE.MeshStandardMaterial({color:0xfff1c8,emissive:0xf5d58a,emissiveIntensity:.8}));
+lit.position.set(f(21.3),0.77,f(15.15)); groups.furn.add(lit);
+const river=new THREE.Mesh(new THREE.PlaneGeometry(0.12,f(6.3)),new THREE.MeshBasicMaterial({color:0xd9d2c0,transparent:true,opacity:.6}));
+river.rotation.x=-Math.PI/2; river.position.set(f(14.7),0.005,f(18.65)); groups.furn.add(river);
+label('長桌',f(11.4),1.0,f(8.2),'f',groups.furn);
+label('發光桌',f(21.3),1.1,f(15.2),'f',groups.furn);
+label('沙發',f(6),1.0,f(20.6),'f',groups.furn);
+
+// 畫框
+[[18.1,20.6],[21.4,24.1]].forEach(([a,b])=>wS2.kids.push(box(a,21.85,b,21.95,1.0,2.25,M(0x6a5a43))));
+
+// 走廊天花板
+const ceil=new THREE.Mesh(new THREE.PlaneGeometry(f(5),f(16)),new THREE.MeshStandardMaterial({color:0xb4b0a6,side:THREE.DoubleSide,transparent:true}));
+ceil.rotation.x=Math.PI/2; ceil.position.set(f(14.6),H+0.002,f(30)); ceil.receiveShadow=true; scene.add(ceil);
+label('走廊入口端',f(14.6),0.4,f(37.5),'f');
+
+// 觀眾
+const mMan=M(0x8a8478);
+[[16,9,1.7],[6.5,12.5,1.6],[18.5,8.5,1.75],[14.2,25,1.65]].forEach(([x,z,h])=>{
+  const g=new THREE.Group();
+  const b=new THREE.Mesh(new THREE.CapsuleGeometry(0.17,h-0.58,6,12),mMan); b.position.y=(h-0.24)/2+0.02;
+  const hd=new THREE.Mesh(new THREE.SphereGeometry(0.115,16,12),mMan); hd.position.y=h-0.12;
+  [b,hd].forEach(m=>{m.castShadow=true;g.add(m);});
+  g.position.set(f(x),0,f(z)); groups.people.add(g);
+});
+
+// ===== 投影面 =====
+// c 中心、n 朝房間內、ra/ua 是站在房間裡面向它時的右與上（ra × ua = n）
+const SURF={
+  A:{name:'A 牆',c:V(0,H/2,f(11)),n:V(1,0,0),ra:V(0,0,-1),ua:V(0,1,0),W:f(22),Hs:H,vert:true,dl:'離 A 牆'},
+  B:{name:'B 牆',c:V(f(25),H/2,f(11)),n:V(-1,0,0),ra:V(0,0,1),ua:V(0,1,0),W:f(22),Hs:H,vert:true,dl:'離 B 牆'},
+  P:{name:'梁柱',c:V(f(18.5),H/2,f(1.8)),n:V(0,0,1),ra:V(1,0,0),ua:V(0,1,0),W:f(3.2),Hs:H,vert:true,dl:'離梁柱'},
+  C:{name:'走廊天花板',c:V(f(14.6),H,f(29.5)),n:V(0,-1,0),ra:V(0,0,-1),ua:V(1,0,0),W:f(13),Hs:f(5),vert:false},
+  F:{name:'畫框區',c:V(f(21.1),1.65,f(22)),n:V(0,0,-1),ra:V(-1,0,0),ua:V(0,1,0),W:f(7.2),Hs:1.5,vert:true,dl:'離畫框牆'}
+};
+Object.values(SURF).forEach(s=>{
+  const g=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(s.W,s.Hs)),new THREE.LineDashedMaterial({color:0x8a7444,dashSize:.1,gapSize:.08}));
+  g.computeLineDistances();
+  g.position.copy(s.c).addScaledVector(s.n,0.01);
+  g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(s.ra,s.ua,s.n));
+  scene.add(g); s.outline=g;
+  const lp=s.vert?s.c.clone().addScaledVector(s.ua,s.Hs/2+0.22).addScaledVector(s.n,0.05):s.c.clone().addScaledVector(s.ra,s.W/2+0.2);
+  label(s.name,lp.x,lp.y,lp.z,'zone');
+});
+wA.kids.push(SURF.A.outline); wB.kids.push(SURF.B.outline); wS2.kids.push(SURF.F.outline);
+
+// ===== Vivitek DX283-ST 光學（原廠說明書與規格表） =====
+// 鏡頭座標：x 向右、y 向上，以「距離 1」量。投射比 0.63 → 半寬 0.794；4:3；
+// 偏移 106% → 畫面底邊在鏡頭軸上方 3% 畫面高。50–100 吋；只有垂直梯形校正 ±40°。
+const TR=0.63, XN=1/(2*TR), NH=2*XN*3/4, Y0=0.03*NH, Y1=Y0+NH, VC=(Y0+Y1)/2, ALPHA=Math.atan(VC);
+const S=1.7, LM=3600, WMIN=1.02, WMAX=2.03, KEYV=40, VID=9/16, ASP=4/3;
+const inch=w=>Math.round(w*1.25/0.0254);   // 4:3 對角 = 寬 × 5/4
+
+function aim(O,T,Y){
+  const dT=T.clone().sub(O).normalize();
+  const u0=Y.clone().addScaledVector(dT,-Y.dot(dT)).normalize();
+  const fw=dT.clone().multiplyScalar(Math.cos(ALPHA)).addScaledVector(u0,-Math.sin(ALPHA)).normalize();
+  const up=dT.clone().multiplyScalar(Math.sin(ALPHA)).addScaledVector(u0,Math.cos(ALPHA)).normalize();
+  return {fw,up,rt:new THREE.Vector3().crossVectors(fw,up)};
+}
+const proj=(P,O,b)=>{const q=P.clone().sub(O),z=q.dot(b.fw);return [q.dot(b.rt)/z,q.dot(b.up)/z,z];};
+const inside=([x,y,z])=>z>0&&Math.abs(x)<=XN+1e-6&&y>=Y0-1e-6&&y<=Y1+1e-6;
+
+function solve8(A,b){ // 高斯消去
+  const n=8,m=A.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<n;c++){
+    let p=c; for(let r=c+1;r<n;r++) if(Math.abs(m[r][c])>Math.abs(m[p][c])) p=r;
+    [m[c],m[p]]=[m[p],m[c]];
+    for(let r=0;r<n;r++){ if(r===c) continue; const k=m[r][c]/m[c][c]; for(let j=c;j<=n;j++) m[r][j]-=k*m[c][j]; }
+  }
+  return m.map((r,i)=>r[n]/r[i]);
+}
+function homography(src,dst){
+  const A=[],b=[];
+  src.forEach(([x,y],i)=>{const [u,v]=dst[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]); b.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]); b.push(v);});
+  const h=solve8(A,b);
+  return new THREE.Matrix3().set(h[0],h[1],h[2],h[3],h[4],h[5],h[6],h[7],1);
+}
+const inRoom=p=>(p.x>=0&&p.x<=f(25)&&p.z>=0&&p.z<=f(22))||(p.x>=f(12.1)&&p.x<=f(17.1)&&p.z>=f(22)&&p.z<=f(38));
+const C2=(s,cx,cy)=>s.c.clone().addScaledVector(s.ra,cx).addScaledVector(s.ua,cy);
+// 機器正對畫面、照投射比放時，鏡頭最理想的高度
+const idealH=(st)=>{const s=SURF[st.surf];return THREE.MathUtils.clamp(C2(s,st.cx,st.cy).y-VC*st.W*TR,0.2,2.4);};
+
+function compute(st){
+  const s=SURF[st.surf], T=C2(s,st.cx,st.cy), Wt=st.W, Ht=st.W/ASP, D0=Wt*TR;
+  const Y=s.ua.clone();
+  let O;
+  if(s.vert){
+    O=T.clone().addScaledVector(s.n,D0); O.y=st.h;
+    O.x=THREE.MathUtils.clamp(O.x,0.2,f(25)-0.2); O.z=THREE.MathUtils.clamp(O.z,0.2,f(22)-0.2);
+  }else{
+    O=T.clone().addScaledVector(s.n,D0).addScaledVector(Y,-VC*D0);
+    O.x=THREE.MathUtils.clamp(O.x,f(12.1)+0.2,f(17.1)-0.2); O.z=THREE.MathUtils.clamp(O.z,f(22.3),f(37.7));
+  }
+  const rectAt=k=>[[0,0],[1,0],[1,1],[0,1]].map(([u,v])=>T.clone().addScaledVector(s.ra,(u-.5)*Wt*k).addScaledVector(s.ua,(v-.5)*Ht*k));
+  const fitK=b=>{
+    if(rectAt(1).every(P=>inside(proj(P,O,b)))) return 1;
+    let lo=0,hi=1;
+    for(let i=0;i<22;i++){const k=(lo+hi)/2; if(rectAt(k).every(P=>inside(proj(P,O,b)))) lo=k; else hi=k;}
+    return lo;
+  };
+  // 對準點沿畫面「上」方向微調，找畫面最大的
+  let b=null,k=-1;
+  for(let j=-12;j<=12;j++){
+    const bb=aim(O,T.clone().addScaledVector(s.ua,j/24*Ht),Y), kk=fitK(bb);
+    if(kk>k+1e-4){k=kk;b=bb;}
+  }
+  const rect=rectAt(k), cam=rect.map(P=>proj(P,O,b));
+  const Hm=k>0.01?homography(cam.map(c=>[c[0],c[1]]),[[0,0],[1,0],[1,1],[0,1]]):null;
+  const D=T.clone().sub(O).dot(b.fw);
+  const facing=s.n.clone().negate();
+  const tiltV=THREE.MathUtils.radToDeg(Math.atan2(b.fw.dot(s.ua),b.fw.dot(facing)));
+  const tiltH=THREE.MathUtils.radToDeg(Math.atan2(b.fw.dot(s.ra),b.fw.dot(facing)));
+  const pitch=THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(b.fw.y,-1,1)));
+  const lux=LM/(2*XN*NH*D*D);
+  const native=[[-XN,Y0],[XN,Y0],[XN,Y1],[-XN,Y1]].map(([x,y])=>{
+    const dir=b.fw.clone().addScaledVector(b.rt,x).addScaledVector(b.up,y).normalize();
+    const t=T.clone().sub(O).dot(s.n)/dir.dot(s.n);
+    return O.clone().addScaledVector(dir,t);
+  });
+  const W=Wt*k, Hh=Ht*k;
+  // 畫面在投影面上的範圍（以投影面中心為原點）
+  const box={x0:st.cx-W/2,x1:st.cx+W/2,y0:st.cy-Hh/2,y1:st.cy+Hh/2};
+  const spill=box.x0<-s.W/2-0.02||box.x1>s.W/2+0.02||box.y0<-s.Hs/2-0.02||box.y1>s.Hs/2+0.02;
+  return {s,O,b,k,rect,Hm,D,tiltV,tiltH,pitch,lux,native,W,Hh,box,spill,D0};
+}
+
+// ===== 影片與畫面 =====
+const CUES=[['01','天雨粟'],['02','雙鉤填墨'],['03','千字陣'],['04','樂在其中'],['05','辨認'],['06','跨越文字'],['07','墨河'],['08','比翼鳥'],['09','百手'],['10','集體漂流'],['11','樂結尾'],['','範圍測試']];
+const vid=document.getElementById('vid');
+const vtex=new THREE.VideoTexture(vid); vtex.colorSpace=THREE.SRGBColorSpace;
+const uFit={value:0}, uPattern={value:0};
+
+const warpVS=`varying vec2 vUv; void main(){vUv=uv; gl_Position=vec4(position.xy,0.,1.);}`;
+// uv：這台畫面內 0–1；mask：投影面範圍；uOff/uScl：換到同一面牆所有畫面合起來的範圍
+const warpFS=`
+precision highp float;
+uniform sampler2D tVid; uniform mat3 Hm; uniform float S,XN,Y0,Y1,rectAsp,unionAsp,vidAsp;
+uniform vec4 mask; uniform vec2 uOff,uScl; uniform int fit,pattern,ok;
+varying vec2 vUv;
+vec3 contain(vec2 t,float a){
+  if(a>vidAsp) t.x=(t.x-.5)*a/vidAsp+.5; else t.y=(t.y-.5)*vidAsp/a+.5;
+  return (t.x<0.||t.x>1.||t.y<0.||t.y>1.)?vec3(0.):texture2D(tVid,t).rgb;
+}
+void main(){
+  vec2 p=(vUv*2.-1.)*S;
+  if(ok==0||abs(p.x)>XN||p.y<Y0||p.y>Y1){gl_FragColor=vec4(0.,0.,0.,1.);return;}
+  vec3 q=Hm*vec3(p,1.); vec2 uv=q.xy/q.z;
+  if(q.z<=0.||uv.x<0.||uv.x>1.||uv.y<0.||uv.y>1.){gl_FragColor=vec4(vec3(.015),1.);return;}
+  if(uv.x<mask.x||uv.x>mask.z||uv.y<mask.y||uv.y>mask.w){gl_FragColor=vec4(vec3(.015),1.);return;}
+  vec3 col;
+  if(pattern==1){
+    vec2 g=fract(uv*vec2(rectAsp*4.,4.)); float l=step(.95,max(g.x,g.y));
+    float e=step(min(min(uv.x,1.-uv.x),min(uv.y,1.-uv.y)),.012);
+    col=mix(vec3(.45),vec3(1.),max(l,e));
+  }else if(fit==2){
+    col=contain(uv,rectAsp);
+  }else{
+    vec2 U=uOff+uv*uScl;
+    if(fit==0) col=contain(U,unionAsp);
+    else{ vec2 t=U; if(unionAsp>vidAsp) t.y=.5+(U.y-.5)*vidAsp/unionAsp; else t.x=.5+(U.x-.5)*unionAsp/vidAsp; col=texture2D(tVid,t).rgb; }
+  }
+  gl_FragColor=vec4(col,1.);
+}`;
+const quadGeo=new THREE.PlaneGeometry(2,2), orthoCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+// ===== 三台投影機 =====
+const COLORS=['#e2b45a','#5fb6cc','#d97a96'];
+const PJ=COLORS.map((col,i)=>{
+  const rt=new THREE.WebGLRenderTarget(2048,2048);
+  const mat=new THREE.ShaderMaterial({vertexShader:warpVS,fragmentShader:warpFS,uniforms:{
+    tVid:{value:vtex},Hm:{value:new THREE.Matrix3()},S:{value:S},XN:{value:XN},Y0:{value:Y0},Y1:{value:Y1},
+    rectAsp:{value:ASP},unionAsp:{value:ASP},vidAsp:{value:VID},mask:{value:new THREE.Vector4(0,0,1,1)},
+    uOff:{value:new THREE.Vector2()},uScl:{value:new THREE.Vector2(1,1)},fit:uFit,pattern:uPattern,ok:{value:1}}});
+  const qs=new THREE.Scene(); qs.add(new THREE.Mesh(quadGeo,mat));
+  const light=new THREE.SpotLight(0xffffff,1,0,Math.atan(S),0.02,0);
+  light.map=rt.texture; light.castShadow=true;
+  light.shadow.mapSize.set(1024,1024); light.shadow.camera.near=0.1; light.shadow.camera.far=16;
+  light.shadow.bias=-0.0004; light.shadow.normalBias=0.02; light.shadow.focus=1;
+  scene.add(light,light.target);
+  // 機身 33.1 × 10.5 × 24.4 cm
+  const body=new THREE.Group();
+  const shell=new THREE.Mesh(new THREE.BoxGeometry(0.331,0.105,0.244),M(0xd8d6d0));
+  const top=new THREE.Mesh(new THREE.BoxGeometry(0.333,0.008,0.246),new THREE.MeshBasicMaterial({color:col}));
+  top.position.y=0.056;
+  const lens=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.045,0.03,20),M(0x111111));
+  lens.rotation.x=Math.PI/2; lens.position.set(0.07,0,-0.13);
+  body.add(shell,top,lens); scene.add(body);
+  const stand=new THREE.Group();
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,1,10),M(0x55555a));
+  const arm=new THREE.Mesh(new THREE.BoxGeometry(1,0.025,0.025),M(0x55555a));
+  const foot=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.02,24),M(0x3a3a3e)); foot.position.y=0.01;
+  stand.add(pole,arm,foot); scene.add(stand);
+  const beam=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.45}));
+  const frame=new THREE.LineLoop(new THREE.BufferGeometry(),new THREE.LineDashedMaterial({color:col,dashSize:.06,gapSize:.05,transparent:true,opacity:.7}));
+  const rectL=new THREE.LineLoop(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:col}));
+  groups.beam.add(beam,frame,rectL);
+  const tag=label(`P${i+1}`,0,0,0,'pj',scene); tag.element.style.background=col;
+  const size=label('',0,0,0,'',groups.beam); size.element.style.borderColor=col;
+  return {i,col,rt,mat,qs,light,body,stand,pole,arm,beam,frame,rectL,tag,size,st:null,r:null};
+});
+
+function updateAll(){
+  PJ.forEach(p=>{p.r=compute(p.st);});
+  // 同一面上所有開著的畫面合起來的範圍，影片照這個範圍排
+  const uni={};
+  PJ.forEach(p=>{ if(!p.st.on) return; const b=p.r.box,k=p.st.surf;
+    uni[k]=uni[k]?{x0:Math.min(uni[k].x0,b.x0),x1:Math.max(uni[k].x1,b.x1),y0:Math.min(uni[k].y0,b.y0),y1:Math.max(uni[k].y1,b.y1)}:{...b}; });
+  PJ.forEach(p=>{
+    const st=p.st, on=st.on, r=p.r, s=r.s, u=p.mat.uniforms;
+    [p.body,p.tag,p.beam,p.frame,p.rectL,p.size,p.light].forEach(o=>o.visible=on);
+    p.light.position.copy(r.O); p.light.target.position.copy(r.O.clone().add(r.b.fw));
+    p.light.shadow.camera.up.copy(r.b.up);
+    p.light.intensity=1+r.lux*0.005;
+    u.ok.value=r.Hm?1:0; if(r.Hm) u.Hm.value.copy(r.Hm);
+    u.rectAsp.value=r.W/Math.max(r.Hh,1e-3);
+    const B=r.box, U=uni[st.surf]||B;
+    u.unionAsp.value=(U.x1-U.x0)/Math.max(U.y1-U.y0,1e-3);
+    u.uOff.value.set((B.x0-U.x0)/(U.x1-U.x0),(B.y0-U.y0)/(U.y1-U.y0));
+    u.uScl.value.set(r.W/(U.x1-U.x0),r.Hh/(U.y1-U.y0));
+    u.mask.value.set((-s.W/2-B.x0)/r.W,(-s.Hs/2-B.y0)/r.Hh,(s.W/2-B.x0)/r.W,(s.Hs/2-B.y0)/r.Hh);
+    // 機身：x=右、y=上、-z=鏡頭方向
+    p.body.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(r.b.rt,r.b.up,r.b.fw.clone().negate()));
+    p.body.position.copy(r.O).addScaledVector(r.b.up,-0.02).addScaledVector(r.b.rt,-0.07).addScaledVector(r.b.fw,0.12);
+    p.tag.position.copy(r.O).add(V(0,-0.22,0));
+    const n=r.native, L=[];
+    n.forEach(P=>L.push(r.O.x,r.O.y,r.O.z,P.x,P.y,P.z));
+    p.beam.geometry.setAttribute('position',new THREE.Float32BufferAttribute(L,3));
+    const off=s.n.clone().multiplyScalar(0.015);
+    p.frame.geometry.setFromPoints(n.map(P=>P.clone().add(off))); p.frame.computeLineDistances();
+    p.rectL.geometry.setFromPoints(r.rect.map(P=>P.clone().add(off)));
+    p.size.position.copy(r.rect[2].clone().lerp(r.rect[3],.5).addScaledVector(s.n,0.05).addScaledVector(s.ua,-0.16));
+    p.size.element.textContent=`P${p.i+1} · ${r.W.toFixed(2)} × ${r.Hh.toFixed(2)} m`;
+  });
+  // 落地架：底下若有別台，柱子往旁邊挪，用橫桿接過去
+  PJ.forEach(p=>{
+    const r=p.r, legH=Math.max(r.O.y-0.17,0);
+    p.stand.visible=p.st.on&&legH>0.12;
+    const below=PJ.find(q=>q!==p&&q.st.on&&q.r.O.y<r.O.y-0.2&&Math.hypot(q.r.O.x-r.O.x,q.r.O.z-r.O.z)<0.45);
+    const side=below?r.s.ra.clone().multiplyScalar(0.42):V(0,0,0);
+    p.stand.position.set(r.O.x+side.x,0,r.O.z+side.z);
+    p.pole.scale.y=legH; p.pole.position.y=legH/2;
+    p.arm.visible=!!below;
+    if(below){ p.arm.scale.x=0.42; p.arm.position.set(-side.x/2,legH,-side.z/2); p.arm.rotation.y=Math.atan2(side.z,-side.x)*-1; }
+    renderCard(p);
+  });
+}
+
+// ===== 擺法 =====
+// cx、cy：畫面中心離投影面中心幾公尺（右、上為正）；W：畫面寬；h：鏡頭高度（auto＝正對時的理想高度）
+const W100=2.03;
+const pj=(surf,cx,cy,W=W100,h='auto')=>({surf,cx,cy,W,h});
+const PRESETS=[
+  {t:'A 牆上下兩台＋梁柱',d:'A 牆兩台疊成一幅 2.0 × 3.0 m 的直幅，剛好放卷軸；梁柱 1 台',p:[pj('A',0,-0.76),pj('A',0,0.76),pj('P',0,0)]},
+  {t:'A、B 牆各一台＋梁柱',d:'每面牆中間一幅 2.0 × 1.5 m（100 吋）',p:[pj('A',0,0),pj('B',0,0),pj('P',0,0)]},
+  {t:'A、B 牆各一台＋畫框',d:'畫框那台放發光桌靠牆端',p:[pj('A',0,0),pj('B',0,0),pj('F',0,0,2.0)]},
+  {t:'A 牆三台並排',d:'三幅接成 6.1 × 1.5 m 的長條，B 牆不投',p:[pj('A',-2.03,0),pj('A',0,0),pj('A',2.03,0)]},
+  {t:'梁柱上下兩台＋畫框',d:'梁柱打到 3.0 m 高；大牆不投',p:[pj('P',0,-0.76),pj('P',0,0.76),pj('F',0,0,2.0)]},
+  {t:'梁柱＋走廊天花板＋畫框',d:'天花板那台放走廊高架上朝上打',p:[pj('P',0,0),pj('C',0,0),pj('F',0,0,2.0)]}
+];
+const pbox=document.getElementById('presets');
+PRESETS.forEach((pr,i)=>{
+  const b=document.createElement('button'); b.className='preset'; b.id='preset'+i; b.setAttribute('aria-pressed','false');
+  b.innerHTML=`<span class="k">${i+1}</span><span class="t">${pr.t}</span><span class="d">${pr.d}</span>`;
+  b.onclick=()=>applyPreset(i); pbox.appendChild(b);
+});
+const withH=st=>({...st,h:st.h==='auto'?idealH(st):st.h});
+function applyPreset(i){
+  [...pbox.children].forEach((b,j)=>b.setAttribute('aria-pressed',i===j));
+  PRESETS[i].p.forEach((st,j)=>{PJ[j].st={...withH(st),on:true};});
+  updateAll();
+}
+const markCustom=()=>[...pbox.children].forEach(b=>b.setAttribute('aria-pressed','false'));
+
+// ===== 投影機卡片 =====
+const pjbox=document.getElementById('pjs');
+const SOPT=Object.entries(SURF).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('');
+PJ.forEach(p=>{
+  const el=document.createElement('div'); el.className='pj'; el.style.setProperty('--c',p.col);
+  const id=s=>`p${p.i}${s}`;
+  el.innerHTML=`
+    <div class="pj-h"><span class="chip">P${p.i+1}</span><span class="m">Vivitek DX283-ST</span><label><input type="checkbox" id="${id('on')}" checked> 開</label></div>
+    <div class="f"><span>投到</span><select id="${id('surf')}">${SOPT}</select></div>
+    <div class="f"><span>畫面寬</span><input type="range" id="${id('wid')}" min="1.0" max="2.3" step="0.01"><output id="${id('widv')}"></output></div>
+    <div class="f"><span>左右</span><input type="range" id="${id('cx')}" step="0.01"><output id="${id('cxv')}"></output></div>
+    <div class="f"><span>上下</span><input type="range" id="${id('cy')}" step="0.01"><output id="${id('cyv')}"></output></div>
+    <div class="f" id="${id('hrow')}"><span>鏡頭高度</span><input type="range" id="${id('h')}" min="0.2" max="2.4" step="0.01"><output id="${id('hv')}"></output></div>
+    <dl class="read">
+      <dt>畫面</dt><dd id="${id('rs')}"></dd>
+      <dt>擺放</dt><dd id="${id('rp')}"></dd>
+      <dt>傾斜</dt><dd id="${id('rt')}"></dd>
+      <dt>亮度</dt><dd id="${id('rl')}"></dd>
+    </dl>
+    <p class="warn" id="${id('w')}"></p>`;
+  pjbox.appendChild(el);
+  const $=s=>el.querySelector('#'+id(s));
+  p.ui={$};
+  const set=(k,v)=>{p.st[k]=v; markCustom(); updateAll();};
+  $('on').onchange=e=>set('on',e.target.checked);
+  $('surf').onchange=e=>{ p.st={...withH(pj(e.target.value,0,0)),on:p.st.on}; markCustom(); updateAll(); };
+  $('wid').oninput=e=>set('W',+e.target.value);
+  $('cx').oninput=e=>set('cx',+e.target.value);
+  $('cy').oninput=e=>set('cy',+e.target.value);
+  $('h').oninput=e=>set('h',+e.target.value);
+});
+const m2=v=>v.toFixed(2)+' m', sg=v=>(v>0?'+':'')+v.toFixed(2);
+function renderCard(p){
+  const {$}=p.ui, st=p.st, r=p.r, s=r.s;
+  $('on').checked=st.on; $('surf').value=st.surf;
+  $('wid').value=st.W; $('widv').textContent=`${inch(st.W)}吋`;
+  $('cx').min=(-s.W/2).toFixed(2); $('cx').max=(s.W/2).toFixed(2); $('cx').value=st.cx; $('cxv').textContent=sg(st.cx);
+  $('cy').min=(-s.Hs/2).toFixed(2); $('cy').max=(s.Hs/2).toFixed(2); $('cy').value=st.cy; $('cyv').textContent=sg(st.cy);
+  $('hrow').hidden=!s.vert; $('h').value=st.h; $('hv').textContent=m2(st.h);
+  const pct=Math.round(r.k*100);
+  const cw=Math.min(r.W,r.Hh*VID), ch=Math.min(r.Hh,r.W/VID);
+  const bottom=s.vert?`，底邊離地 ${(s.c.y+r.box.y0).toFixed(2)} m`:'';
+  $('rs').innerHTML=`${r.W.toFixed(2)} × ${r.Hh.toFixed(2)} m（${inch(r.W)} 吋）${pct<100?`，只到 ${pct}%`:''}${bottom}<br><span style="color:var(--soft)">單台放一整幅卷軸時 ${cw.toFixed(2)} × ${ch.toFixed(2)} m</span>`;
+  const stand=r.O.y<=0.32?'放地上':`架高，鏡頭 ${r.O.y.toFixed(2)} m`;
+  $('rp').textContent=s.vert?`${s.dl} ${m2(r.D0)}，${stand}`:`走廊架高，鏡頭 ${r.O.y.toFixed(2)} m，朝上打`;
+  const tv=Math.round(r.tiltV), th=Math.round(r.tiltH);
+  $('rt').textContent=(tv===0&&th===0)?'正對，不用梯形校正':`上下 ${tv}°${th?`、左右 ${th}°`:''}（垂直梯形校正可拉 ±40°）`;
+  $('rl').textContent=`約 ${Math.round(r.lux/10)*10} lux（離越遠越暗）`;
+  const w=[];
+  if(st.W>WMAX+0.005) w.push('超過原廠最大 100 吋（寬 2.03 m）。');
+  if(st.W<WMIN-0.005) w.push('小於原廠最小 50 吋。');
+  if(r.k<0.995) w.push(`這個位置打不滿，只到 ${pct}%。`);
+  if(Math.abs(r.tiltV)>KEYV) w.push('上下傾斜超過梯形校正 ±40°，實際拉不正。');
+  if(Math.abs(r.tiltH)>2) w.push('這台沒有左右梯形校正，機器要正對畫面，不然會歪（模擬裡先拉正了）。');
+  if(s.vert&&Math.abs(r.pitch)>15) w.push(`機身仰／俯 ${Math.round(Math.abs(r.pitch))}°，說明書建議水平擺放，避免過熱。`);
+  if(!s.vert) w.push('朝上打：原廠寫朝上、朝下使用時燈泡壽命不保證。');
+  if(r.spill) w.push(`畫面比${s.name}大，多出來的部分要在影片裡做成黑色（模擬已遮黑）。`);
+  if(!inRoom(r.O)) w.push('機器位置跑到房間外面了。');
+  const hf=hitFurn(r.O); if(hf) w.push(`機器位置跟${hf[5]}重疊，要放到${hf[5]}上（調高）或挪開。`);
+  $('w').textContent=w.join(' ');
+}
+
+// ===== 播放 =====
+const cbox=document.getElementById('cues');
+let cue=0;
+CUES.forEach(([n,t],i)=>{
+  const b=document.createElement('button'); b.className='cue'; b.id='cue'+i; b.setAttribute('aria-pressed','false');
+  b.innerHTML=n?`<small>${n}</small>${t}`:t; b.title=t; b.onclick=()=>setCue(i); cbox.appendChild(b);
+});
+const playBtn=document.getElementById('play');
+function setCue(i){
+  cue=(i+CUES.length)%CUES.length;
+  [...cbox.children].forEach((b,j)=>b.setAttribute('aria-pressed',j===cue));
+  const n=CUES[cue][0];
+  uPattern.value=n?0:1;
+  if(n) loadCue(n,cue);
+}
+// 發布後頁面在沙盒裡，直接用網址播的影片會被當成跨來源，不能貼到 3D 上；先抓成 blob 再播
+const blobs={};
+async function loadCue(n,want){
+  try{
+    if(!blobs[n]){ const res=await fetch(`videos/cue${n}.mp4`); if(!res.ok) throw new Error(res.status); blobs[n]=URL.createObjectURL(await res.blob()); }
+    if(cue!==want) return;
+    vid.src=blobs[n];
+  }catch(e){ if(cue!==want) return; vid.src=`videos/cue${n}.mp4`; }
+  vid.play().catch(()=>{}); playBtn.textContent='暫停';
+}
+playBtn.onclick=()=>{ if(vid.paused){vid.play().catch(()=>{});playBtn.textContent='暫停';} else {vid.pause();playBtn.textContent='播放';} };
+document.getElementById('prev').onclick=()=>setCue(cue-1);
+document.getElementById('next').onclick=()=>setCue(cue+1);
+document.getElementById('fit').onclick=e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  uFit.value=+b.dataset.v; [...e.currentTarget.children].forEach(x=>x.setAttribute('aria-pressed',x===b));
+};
+
+// ===== 視角 =====
+const VIEWS={
+  '鳥瞰':[[f(12.5)+7,12.5,f(40)],[f(12.5),0,f(16)]],
+  '平面俯視':[[f(12.5),19,f(19.6)],[f(12.5),0,f(19.5)]],
+  '從走廊看進來':[[f(14.6),1.6,f(37)],[f(14.6),1.4,f(4)]],
+  '看 A 牆':[[f(22),2.5,f(11)],[0,1.7,f(11)]],
+  '看 B 牆':[[f(3),2.5,f(11)],[f(25),1.7,f(11)]],
+  '看梁柱':[[f(14),1.8,f(15)],[f(18.5),1.9,f(1.8)]],
+  '走廊天花板':[[f(14.6),0.4,f(34.5)],[f(14.6),H,f(29.2)]],
+  '畫框區':[[f(17),1.7,f(8)],[f(21.1),1.6,f(22)]]
+};
+const vbox=document.getElementById('views');
+let tween=null; const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+Object.keys(VIEWS).forEach((k,i)=>{
+  const b=document.createElement('button'); b.textContent=k; b.id='view'+i; b.setAttribute('aria-pressed','false');
+  b.onclick=()=>go(k); vbox.appendChild(b);
+});
+function go(k){
+  const [p,t]=VIEWS[k];
+  [...vbox.children].forEach(b=>b.setAttribute('aria-pressed',b.textContent===k));
+  const to={p:V(...p),t:V(...t)};
+  if(reduce){camera.position.copy(to.p);controls.target.copy(to.t);return;}
+  tween={from:{p:camera.position.clone(),t:controls.target.clone()},to,t0:performance.now(),d:900};
+}
+camera.position.set(...VIEWS['鳥瞰'][0]); controls.target.set(...VIEWS['鳥瞰'][1]);
+vbox.children[0].setAttribute('aria-pressed','true');
+controls.addEventListener('start',()=>{tween=null;[...vbox.children].forEach(b=>b.setAttribute('aria-pressed','false'));});
+
+// ===== 顯示 =====
+const bind=(id,g)=>{const el=document.getElementById(id);el.onchange=()=>{g.visible=el.checked;}};
+bind('tFurn',groups.furn); bind('tPeople',groups.people); bind('tBeam',groups.beam);
+const tl=document.getElementById('tLbl'); tl.onchange=()=>{lr.domElement.style.display=tl.checked?'':'none';};
+const ambEl=document.getElementById('amb'); ambEl.oninput=()=>setAmbient(+ambEl.value); setAmbient(+ambEl.value);
+
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;
+  renderer.setSize(w,h); lr.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+
+applyPreset(0); setCue(0);
+
+const tmp=new THREE.Vector3();
+renderer.setAnimationLoop(now=>{
+  if(tween){
+    let k=Math.min(1,(now-tween.t0)/tween.d); k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    camera.position.lerpVectors(tween.from.p,tween.to.p,k); controls.target.lerpVectors(tween.from.t,tween.to.t,k);
+    if(k>=1) tween=null;
+  }
+  controls.update();
+  for(const w of walls){
+    const out=tmp.copy(camera.position).sub(w.p).dot(w.n)<0;
+    w.m.visible=!out; w.kids.forEach(k=>k.visible=!out);
+  }
+  ceil.material.opacity=camera.position.y>H?0.15:1;
+  for(const p of PJ){ if(!p.st.on) continue; renderer.setRenderTarget(p.rt); renderer.render(p.qs,orthoCam); }
+  renderer.setRenderTarget(null);
+  renderer.render(scene,camera); lr.render(scene,camera);
+});
+window.__pj=PJ;
+</script>
