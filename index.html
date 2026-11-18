@@ -118,6 +118,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
           </div>
         </div>
       </div>
+      <p class="note" id="vstat" style="margin-top:8px">影片載入中…</p>
     </section>
 
     <section style="display:flex;flex-direction:column;gap:10px">
@@ -359,6 +360,7 @@ function compute(st){
 const CUES=[['01','天雨粟'],['02','雙鉤填墨'],['03','千字陣'],['04','樂在其中'],['05','辨認'],['06','跨越文字'],['07','墨河'],['08','比翼鳥'],['09','百手'],['10','集體漂流'],['11','樂結尾'],['','範圍測試']];
 const vid=document.getElementById('vid');
 const vtex=new THREE.VideoTexture(vid); vtex.colorSpace=THREE.SRGBColorSpace;
+const blackTex=new THREE.DataTexture(new Uint8Array([0,0,0,255]),1,1); blackTex.needsUpdate=true;
 const uFit={value:0}, uPattern={value:0};
 
 const warpVS=`varying vec2 vUv; void main(){vUv=uv; gl_Position=vec4(position.xy,0.,1.);}`;
@@ -581,14 +583,19 @@ function setCue(i){
 }
 // 發布後頁面在沙盒裡，直接用網址播的影片會被當成跨來源，不能貼到 3D 上；先抓成 blob 再播
 const blobs={};
+const vstat=document.getElementById('vstat');
+let vmode='', texErr='';
+const showStat=()=>{vstat.textContent=texErr?`影片貼不到 3D 上（${texErr}），先用範圍測試看位置。`:`影片：${vmode}`;};
 async function loadCue(n,want){
   try{
-    if(!blobs[n]){ const res=await fetch(`videos/cue${n}.mp4`); if(!res.ok) throw new Error(res.status); blobs[n]=URL.createObjectURL(await res.blob()); }
+    if(!blobs[n]){ const res=await fetch(`videos/cue${n}.mp4`); if(!res.ok) throw new Error('HTTP '+res.status); blobs[n]=URL.createObjectURL(await res.blob()); }
     if(cue!==want) return;
-    vid.src=blobs[n];
-  }catch(e){ if(cue!==want) return; vid.src=`videos/cue${n}.mp4`; }
-  vid.play().catch(()=>{}); playBtn.textContent='暫停';
+    vid.src=blobs[n]; vmode='已載入';
+  }catch(e){ if(cue!==want) return; vid.src=`videos/cue${n}.mp4`; vmode=`改用直接播放（${e.message||e}）`; }
+  showStat();
+  vid.play().catch(e=>{vmode+=`；自動播放被擋，請按播放`;showStat();}); playBtn.textContent='暫停';
 }
+vid.addEventListener('error',()=>{vmode=`影片讀不到（錯誤碼 ${vid.error&&vid.error.code}）`;showStat();});
 playBtn.onclick=()=>{ if(vid.paused){vid.play().catch(()=>{});playBtn.textContent='暫停';} else {vid.pause();playBtn.textContent='播放';} };
 document.getElementById('prev').onclick=()=>setCue(cue-1);
 document.getElementById('next').onclick=()=>setCue(cue+1);
@@ -652,7 +659,12 @@ renderer.setAnimationLoop(now=>{
     w.m.visible=!out; w.kids.forEach(k=>k.visible=!out);
   }
   ceil.material.opacity=camera.position.y>H?0.15:1;
-  for(const p of PJ){ if(!p.st.on) continue; renderer.setRenderTarget(p.rt); renderer.render(p.qs,orthoCam); }
+  try{
+    for(const p of PJ){ if(!p.st.on) continue; renderer.setRenderTarget(p.rt); renderer.render(p.qs,orthoCam); }
+  }catch(e){
+    texErr=(e&&(e.name||e.message))||'錯誤'; showStat();
+    PJ.forEach(p=>{p.mat.uniforms.tVid.value=blackTex;});
+  }
   renderer.setRenderTarget(null);
   renderer.render(scene,camera); lr.render(scene,camera);
 });
